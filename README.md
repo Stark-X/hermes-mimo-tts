@@ -159,15 +159,31 @@ MiMo also supports inline audio tags in the text itself for word-level control:
 
 ## Usage
 
+Hermes does not expose a standalone `tts` subcommand. TTS is triggered by the agent
+during a conversation when it decides to speak a response aloud. Start a session and
+ask the agent to read something:
+
 ```bash
-# Basic
-hermes tts "Hello, this is MiMo speaking."
+hermes
+```
 
-# One-off voice override
-hermes tts --voice 冰糖 "你好，这是冰糖音色。"
+Then in the conversation:
 
-# One-off model override
-hermes tts --model mimo-v2.5-tts-voicedesign "Testing voice design."
+```
+> 用语音朗读：今天天气真不错。
+> Please read this aloud: Hello, this is MiMo speaking.
+> 帮我用茉莉音色说一句话
+```
+
+The agent will call the `text_to_speech` tool internally and deliver audio according
+to the platform (CLI saves to `~/.hermes/audio_cache/`, Telegram sends a voice bubble,
+etc.).
+
+To verify the plugin is loaded before starting a conversation:
+
+```bash
+hermes plugins list        # mimo-tts should appear as enabled
+hermes tools               # Voice & TTS picker should show "Xiaomi MiMo"
 ```
 
 ## License
