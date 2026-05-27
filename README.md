@@ -20,14 +20,20 @@ A [Hermes Agent](https://hermes-agent.nousresearch.com) TTS plugin that integrat
 
 ## Installation
 
+**Recommended — install directly from GitHub:**
+
 ```bash
-# 1. Clone the repo
+hermes plugins install Stark-X/hermes-mimo-tts --enable
+```
+
+Hermes clones the repo into `~/.hermes/plugins/mimo-tts/`, prompts for `MIMO_API_KEY`,
+and enables the plugin in one step.
+
+**Alternative — manual clone + symlink (for development or local edits):**
+
+```bash
 git clone https://github.com/Stark-X/hermes-mimo-tts.git
-
-# 2. Symlink into Hermes plugins directory
 ln -s "$(pwd)/hermes-mimo-tts" ~/.hermes/plugins/mimo-tts
-
-# 3. Enable the plugin
 hermes plugins enable mimo-tts
 ```
 

@@ -1,6 +1,6 @@
 name: mimo-tts
-version: 0.1.0
-description: "Xiaomi MiMo-V2.5-TTS provider for Hermes Agent (preset voices)"
+version: "0.1.0"
+description: "Xiaomi MiMo-V2.5-TTS provider for Hermes Agent (preset voices, voice design, voice clone)"
 author: Stark-X
 homepage: https://github.com/Stark-X/hermes-mimo-tts
 license: MIT
@@ -9,3 +9,5 @@ tags:
   - chinese
   - xiaomi
   - mimo
+requires_env:
+  - MIMO_API_KEY
