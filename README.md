@@ -1,9 +1,10 @@
 # hermes-mimo-tts
 
-A [Hermes Agent](https://hermes-agent.nousresearch.com) TTS plugin that integrates Xiaomi's **MiMo-V2.5-TTS** (preset voices) as a drop-in speech provider.
+A [Hermes Agent](https://hermes-agent.nousresearch.com) TTS plugin that integrates Xiaomi's **MiMo-V2.5-TTS** as a drop-in speech provider.
 
 ## Features
 
+- Three MiMo models: preset voices / text-described voice design / audio-sample clone
 - 9 preset voices: 5 Chinese (冰糖 / 茉莉 / 苏打 / 白桦 / default) and 4 English (Mia / Chloe / Milo / Dean)
 - Natural-language style control via an optional `style` directive
 - Automatic format conversion (WAV → MP3 / OGG / FLAC) using `ffmpeg`
@@ -39,12 +40,22 @@ tts:
   provider: mimo          # activate this plugin
 
   mimo:
+    # MiMo model to use. Valid values:
+    #   mimo-v2.5-tts             — preset voices (default)
+    #   mimo-v2.5-tts-voicedesign — voice generated from a text description (set via `style`)
+    #   mimo-v2.5-tts-voiceclone  — voice cloned from a base64-encoded audio sample (set via `voice`)
+    model: "mimo-v2.5-tts"
+
     # Voice ID to use when no voice is specified by the caller.
-    # Valid values: mimo_default | 冰糖 | 茉莉 | 苏打 | 白桦 | Mia | Chloe | Milo | Dean
+    # For mimo-v2.5-tts: any id from the preset voice table below.
+    # For mimo-v2.5-tts-voiceclone: base64 audio data URL
+    #   (format: "data:audio/mpeg;base64,<base64_string>").
+    # Ignored for mimo-v2.5-tts-voicedesign.
     voice: "Chloe"
 
-    # Optional natural-language style directive passed as the `user` message.
-    # Supports tone, emotion, pacing — leave empty for no style control.
+    # Natural-language style / tone directive sent as the `user` message.
+    # For mimo-v2.5-tts-voicedesign: this is the voice description and is required.
+    # For other models: optional — leave empty to skip.
     # Example: "用温柔低沉的语调，语速缓慢，带着一丝疲惫"
     style: ""
 
@@ -60,15 +71,28 @@ tts:
     timeout: 60
 ```
 
-Set your API key in the environment:
+Set your API key in `~/.hermes/.env` (Hermes loads this file automatically on startup):
 
 ```bash
-export MIMO_API_KEY=your_api_key_here
+# ~/.hermes/.env
+MIMO_API_KEY=your_api_key_here
 ```
 
-Or add it to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence.
+Create the file if it doesn't exist:
 
-## Available Voices
+```bash
+echo 'MIMO_API_KEY=your_api_key_here' >> ~/.hermes/.env
+```
+
+## Models
+
+| Model ID | Description | `voice` | `style` |
+|---|---|---|---|
+| `mimo-v2.5-tts` | Preset voices (default) | Preset voice ID (see table below) | Optional — tone/style directive |
+| `mimo-v2.5-tts-voicedesign` | Generate a voice from a text description | Ignored | **Required** — voice description |
+| `mimo-v2.5-tts-voiceclone` | Clone a voice from an audio sample | Base64 audio data URL | Optional — tone/style directive |
+
+### mimo-v2.5-tts — Preset Voices
 
 | Voice ID | Language | Gender |
 |---|---|---|
@@ -82,11 +106,39 @@ Or add it to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) for persistence.
 | `Milo` | English | Male |
 | `Dean` | English | Male |
 
-Run `hermes tools` → **Voice & TTS** to browse and preview voices interactively.
+Run `hermes tools` → **Voice & TTS** to browse voices interactively.
+
+### mimo-v2.5-tts-voicedesign — Voice Design
+
+Set `model: mimo-v2.5-tts-voicedesign` and describe the voice in `style`:
+
+```yaml
+tts:
+  mimo:
+    model: "mimo-v2.5-tts-voicedesign"
+    style: "Young female, warm and confident, moderate pace, slight Taiwanese accent"
+```
+
+### mimo-v2.5-tts-voiceclone — Voice Clone
+
+Set `model: mimo-v2.5-tts-voiceclone` and supply a base64-encoded MP3/WAV sample as `voice`:
+
+```yaml
+tts:
+  mimo:
+    model: "mimo-v2.5-tts-voiceclone"
+    voice: "data:audio/mpeg;base64,<your_base64_string>"
+```
+
+Generate the base64 string from a local file:
+
+```bash
+python3 -c "import base64; print('data:audio/mpeg;base64,' + base64.b64encode(open('sample.mp3','rb').read()).decode())"
+```
 
 ## Style Control
 
-The `style` field maps to MiMo's natural-language style directive. A few examples:
+The `style` field maps to MiMo's natural-language style directive (the `user` message). A few examples:
 
 ```yaml
 # Lively and upbeat
@@ -113,6 +165,9 @@ hermes tts "Hello, this is MiMo speaking."
 
 # One-off voice override
 hermes tts --voice 冰糖 "你好，这是冰糖音色。"
+
+# One-off model override
+hermes tts --model mimo-v2.5-tts-voicedesign "Testing voice design."
 ```
 
 ## License

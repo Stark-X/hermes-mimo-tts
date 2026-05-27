@@ -1,5 +1,10 @@
 """
-Hermes Agent TTS plugin — Xiaomi MiMo-V2.5-TTS (preset voices).
+Hermes Agent TTS plugin — Xiaomi MiMo-V2.5-TTS.
+
+Supported models:
+  mimo-v2.5-tts           — preset voices (default)
+  mimo-v2.5-tts-voicedesign — voice generated from a text description (set via `style`)
+  mimo-v2.5-tts-voiceclone  — voice cloned from a base64-encoded audio sample (set via `voice`)
 
 Requires:
   - MIMO_API_KEY environment variable
@@ -41,6 +46,10 @@ _PRESET_VOICES = [
 ]
 
 _DEFAULT_BASE_URL = "https://token-plan-sgp.xiaomimimo.com/v1"
+_DEFAULT_MODEL = "mimo-v2.5-tts"
+
+# Models that must NOT receive a `voice` key in the audio dict
+_VOICEDESIGN_MODELS = {"mimo-v2.5-tts-voicedesign"}
 
 
 def _load_mimo_config() -> dict[str, Any]:
@@ -84,10 +93,22 @@ class MimoTTSProvider(TTSProvider):
         return [
             {
                 "id": "mimo-v2.5-tts",
-                "display": "MiMo-V2.5-TTS",
+                "display": "MiMo-V2.5-TTS (preset voices)",
                 "languages": ["zh", "en"],
                 "max_text_length": 4096,
-            }
+            },
+            {
+                "id": "mimo-v2.5-tts-voicedesign",
+                "display": "MiMo-V2.5-TTS VoiceDesign (text-described voice)",
+                "languages": ["zh", "en"],
+                "max_text_length": 4096,
+            },
+            {
+                "id": "mimo-v2.5-tts-voiceclone",
+                "display": "MiMo-V2.5-TTS VoiceClone (audio-sample clone)",
+                "languages": ["zh", "en"],
+                "max_text_length": 4096,
+            },
         ]
 
     def get_setup_schema(self) -> dict:
@@ -126,12 +147,18 @@ class MimoTTSProvider(TTSProvider):
 
         cfg = _load_mimo_config()
 
-        # Voice ID to use when the caller doesn't specify one.
-        # Any id from list_voices() is valid.
+        # MiMo model to use. Caller's model= arg takes precedence over config.
+        # Valid values: mimo-v2.5-tts | mimo-v2.5-tts-voicedesign | mimo-v2.5-tts-voiceclone
+        resolved_model: str = model or cfg.get("model", _DEFAULT_MODEL)
+
+        # Voice ID (preset model) or base64 audio data URL (voiceclone model).
+        # Ignored when using mimo-v2.5-tts-voicedesign.
         default_voice: str = cfg.get("voice", "Chloe")
 
-        # Optional natural-language style instruction sent as the `user` message
-        # (e.g. "用温柔低沉的语调，语速缓慢"). Empty string = no user message.
+        # Natural-language style / tone directive sent as the `user` message.
+        # For mimo-v2.5-tts-voicedesign this field is the voice description and
+        # is required. For other models it is optional.
+        # Example: "用温柔低沉的语调，语速缓慢"
         style: str = cfg.get("style", "")
 
         # MiMo API base URL — change this if using a different regional endpoint.
@@ -152,18 +179,26 @@ class MimoTTSProvider(TTSProvider):
         resolved_voice = voice or default_voice
 
         # MiMo places the text-to-synthesize in the `assistant` role.
-        # An optional `user` message acts as a style / tone directive.
+        # An optional (or required, for voicedesign) `user` message carries
+        # the style directive or voice description.
         messages: list[dict] = []
         if style:
             messages.append({"role": "user", "content": style})
         messages.append({"role": "assistant", "content": text})
 
+        # voicedesign generates its own voice from the style description —
+        # passing a `voice` key would be ignored or cause an error.
+        if resolved_model in _VOICEDESIGN_MODELS:
+            audio_params: dict = {"format": "wav"}
+        else:
+            audio_params = {"format": "wav", "voice": resolved_voice}
+
         try:
             client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
             completion = client.chat.completions.create(
-                model="mimo-v2.5-tts",
+                model=resolved_model,
                 messages=messages,
-                audio={"format": "wav", "voice": resolved_voice},
+                audio=audio_params,
             )
             audio_data = completion.choices[0].message.audio
             if audio_data is None:
