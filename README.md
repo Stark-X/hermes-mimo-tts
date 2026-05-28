@@ -195,3 +195,8 @@ hermes tools               # Voice & TTS picker should show "Xiaomi MiMo"
 ## License
 
 MIT
+
+---
+
+- 学 AI，上 [L 站](https://linux.do) ~
+- 万年更新一次的个人博客: [Stark-X's Blog](https://blog.stark-x.cn)
